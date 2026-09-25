@@ -14,7 +14,7 @@ A Model Context Protocol (MCP) server that provides basic mathematical, statisti
 - Trigonometric functions (sin, cos, tan, and their inverses; degrees/radians conversions)
 
 ## Installation
-> **Note:** Ensure you have [Node.js](https://nodejs.org/en/download) installed on your computer.
+> **Note:** Node.js 22.12.0 or newer is required. Vitest 5 supports Node.js 22.12+ (22.x), 24.x, and 26.0.0 or newer. Install Node.js from [nodejs.org](https://nodejs.org/en/download).
 
 Just clone this repository and save it locally somewhere on your computer.
 
