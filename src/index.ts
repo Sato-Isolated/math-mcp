@@ -12,6 +12,7 @@ import { z } from "zod";
 import { Arithmetic } from "./Classes/Arithmetic.js";
 import { Statistics } from "./Classes/Statistics.js";
 import { Trigonometric } from "./Classes/Trigonometric.js";
+import { IntegerTools } from "./Classes/IntegerTools.js";
 
 export default function createServer() {
     const mathServer = new McpServer({
@@ -386,6 +387,89 @@ export default function createServer() {
             }]
         }
     })
+
+    const widthSchema = z.union([z.literal(8), z.literal(16), z.literal(32), z.literal(64)])
+    const signednessSchema = z.enum(["signed", "unsigned"])
+    const overflowSchema = z.enum(["error", "wrap"]).optional()
+    const endiannessSchema = z.enum(["big", "little"])
+
+    mathServer.tool("convert_base", "Converts an integer numeral between bases 2 and 36. Input digits are interpreted in fromBase; output digits use toBase.", {
+        value: z.string().describe("Integer numeral without a base prefix; negative values are supported"),
+        fromBase: z.number().int().min(2).max(36).describe("Base of the input numeral"),
+        toBase: z.number().int().min(2).max(36).describe("Base to convert the numeral to"),
+    }, async ({ value, fromBase, toBase }) => ({
+        content: [{ type: "text", text: IntegerTools.convertBase(value, fromBase, toBase) }]
+    }))
+
+    mathServer.tool("convert_integer", "Returns the fixed-width signed or unsigned representation of an integer, including its binary and hexadecimal bit patterns. Signed values use two's complement.", {
+        value: z.string().describe("Decimal integer string"),
+        width: widthSchema.describe("Integer width in bits"),
+        signedness: signednessSchema.describe("Interpret the bit pattern as signed or unsigned"),
+        overflowMode: overflowSchema.describe("Use error by default, or wrap modulo 2^width"),
+    }, async ({ value, width, signedness, overflowMode }) => ({
+        content: [{ type: "text", text: JSON.stringify(IntegerTools.formatFixedWidth(value, width, signedness, overflowMode ?? "error")) }]
+    }))
+
+    mathServer.tool("bitwise", "Applies a fixed-width bitwise operation. Shift counts must be less than width; arithmetic right shift requires signed values.", {
+        operation: z.enum(["and", "or", "xor", "not", "shift_left", "logical_shift_right", "arithmetic_shift_right"]),
+        leftValue: z.string().describe("Left operand as a decimal integer string"),
+        rightValue: z.string().optional().describe("Right operand, or shift count; omit only for not"),
+        width: widthSchema.describe("Integer width in bits"),
+        signedness: signednessSchema.describe("Interpret the bit pattern as signed or unsigned"),
+        overflowMode: overflowSchema.describe("Use error by default, or wrap operands modulo 2^width"),
+    }, async ({ operation, leftValue, rightValue, width, signedness, overflowMode }) => ({
+        content: [{ type: "text", text: JSON.stringify(IntegerTools.bitwise(operation, leftValue, rightValue, width, signedness, overflowMode ?? "error")) }]
+    }))
+
+    mathServer.tool("test_bit", "Tests a bit in a fixed-width integer; bit index 0 is the least significant bit.", {
+        value: z.string().describe("Decimal integer string"),
+        index: z.number().int().min(0).describe("Bit index, starting at 0 for the least significant bit"),
+        width: widthSchema.describe("Integer width in bits"),
+        signedness: signednessSchema.describe("Interpret the bit pattern as signed or unsigned"),
+        overflowMode: overflowSchema.describe("Use error by default, or wrap modulo 2^width"),
+    }, async ({ value, index, width, signedness, overflowMode }) => ({
+        content: [{ type: "text", text: String(IntegerTools.testBit(value, index, width, signedness, overflowMode ?? "error")) }]
+    }))
+
+    mathServer.tool("extract_bits", "Extracts a bit field from a fixed-width integer; start is counted from the least significant bit.", {
+        value: z.string().describe("Decimal integer string"),
+        start: z.number().int().min(0).describe("Index of the least significant bit to extract"),
+        length: z.number().int().min(1).describe("Number of bits to extract"),
+        width: widthSchema.describe("Integer width in bits"),
+        signedness: signednessSchema.describe("Interpret the input bit pattern as signed or unsigned"),
+        overflowMode: overflowSchema.describe("Use error by default, or wrap modulo 2^width"),
+    }, async ({ value, start, length, width, signedness, overflowMode }) => ({
+        content: [{ type: "text", text: IntegerTools.extractBits(value, start, length, width, signedness, overflowMode ?? "error") }]
+    }))
+
+    mathServer.tool("modify_bit", "Sets, clears, or toggles one bit in a fixed-width integer; bit index 0 is the least significant bit.", {
+        value: z.string().describe("Decimal integer string"),
+        index: z.number().int().min(0).describe("Bit index, starting at 0 for the least significant bit"),
+        action: z.enum(["set", "clear", "toggle"]),
+        width: widthSchema.describe("Integer width in bits"),
+        signedness: signednessSchema.describe("Interpret the bit pattern as signed or unsigned"),
+        overflowMode: overflowSchema.describe("Use error by default, or wrap modulo 2^width"),
+    }, async ({ value, index, action, width, signedness, overflowMode }) => ({
+        content: [{ type: "text", text: JSON.stringify(IntegerTools.modifyBit(value, index, action, width, signedness, overflowMode ?? "error")) }]
+    }))
+
+    mathServer.tool("integer_to_bytes", "Encodes a fixed-width integer as bytes and a hexadecimal string in the requested byte order.", {
+        value: z.string().describe("Decimal integer string"),
+        width: widthSchema.describe("Integer width in bits (8, 16, 32, or 64)"),
+        signedness: signednessSchema.describe("Encode as signed two's complement or unsigned"),
+        endianness: endiannessSchema.describe("Byte order"),
+        overflowMode: overflowSchema.describe("Use error by default, or wrap modulo 2^width"),
+    }, async ({ value, width, signedness, endianness, overflowMode }) => ({
+        content: [{ type: "text", text: JSON.stringify(IntegerTools.toBytes(value, width, signedness, endianness, overflowMode ?? "error")) }]
+    }))
+
+    mathServer.tool("bytes_to_integer", "Decodes 1, 2, 4, or 8 bytes as a signed or unsigned integer using the requested byte order.", {
+        bytes: z.array(z.number().int().min(0).max(255)).describe("Byte values in the specified order"),
+        signedness: signednessSchema.describe("Interpret bytes as signed two's complement or unsigned"),
+        endianness: endiannessSchema.describe("Order of bytes in the input list"),
+    }, async ({ bytes, signedness, endianness }) => ({
+        content: [{ type: "text", text: IntegerTools.fromBytes(bytes, signedness, endianness) }]
+    }))
 
     return mathServer.server
 }

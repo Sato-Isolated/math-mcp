@@ -1,6 +1,6 @@
 # Math-MCP
 
-A Model Context Protocol (MCP) server that provides basic mathematical, statistical and trigonometric functions to Large Language Models (LLMs). This server enables LLMs to perform accurate numerical calculations through a simple API.
+A Model Context Protocol (MCP) server that provides arithmetic, statistics, trigonometry, and integer programming tools to Large Language Models (LLMs). It enables accurate calculations and common fixed-width integer operations through a simple API.
 
 <a href="https://glama.ai/mcp/servers/exa5lt8dgd">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/exa5lt8dgd/badge" alt="Math-MCP MCP server" />
@@ -9,6 +9,7 @@ A Model Context Protocol (MCP) server that provides basic mathematical, statisti
 ## Features
 
 - Basic arithmetic operations (addition, subtraction, multiplication, division, sum, modulo)
+- Integer programming tools (base conversion, fixed-width representations, bitwise operations, bit fields, and byte order conversion)
 - Statistical functions (mean, median, mode, min, max)
 - Rounding functions (floor, ceiling, round)
 - Trigonometric functions (sin, cos, tan, and their inverses; degrees/radians conversions)
@@ -63,6 +64,23 @@ The Math-MCP server provides the following mathematical operations:
 | `floor` | Rounds a number down to the nearest integer | `number`: The number to round down |
 | `ceiling` | Rounds a number up to the nearest integer | `number`: The number to round up |
 | `round` | Rounds a number to the nearest integer | `number`: The number to round |
+
+### Integer and Bitwise Operations
+
+Integer inputs and results use decimal strings where precision may exceed JavaScript's safe integer range. Base conversion accepts digits without prefixes (`0x`, `0b`, etc.); input digits are case-insensitive and output digits are lowercase. Fixed-width tools support 8, 16, 32, and 64 bits. Signed representations use two's complement. Values outside the selected range produce an error by default; set `overflowMode` to `wrap` to reduce the value modulo 2<sup>width</sup>.
+
+| Function | Description | Parameters |
+|----------|-------------|------------|
+| `convert_base` | Converts an integer numeral between bases 2 and 36 | `value`: numeral as a string<br>`fromBase`: input base<br>`toBase`: output base |
+| `convert_integer` | Returns the fixed-width decimal value, bit pattern, and hex pattern | `value`: decimal integer string<br>`width`: 8, 16, 32, or 64<br>`signedness`: `signed` or `unsigned`<br>`overflowMode`: optional `error` or `wrap` |
+| `bitwise` | Applies AND, OR, XOR, NOT, or a fixed-width shift | `operation`: `and`, `or`, `xor`, `not`, `shift_left`, `logical_shift_right`, or `arithmetic_shift_right`<br>`leftValue`: decimal integer string<br>`rightValue`: second operand or shift count; omit for `not`<br>`width`, `signedness`, optional `overflowMode` |
+| `test_bit` | Tests one bit; index 0 is the least significant bit | `value`, `index`, `width`, `signedness`, optional `overflowMode` |
+| `extract_bits` | Extracts a bit field; `start` is counted from the least significant bit | `value`, `start`, `length`, `width`, `signedness`, optional `overflowMode` |
+| `modify_bit` | Sets, clears, or toggles one bit | `value`, `index`, `action` (`set`, `clear`, or `toggle`), `width`, `signedness`, optional `overflowMode` |
+| `integer_to_bytes` | Encodes an integer as a byte list and hexadecimal string | `value`, `width`, `signedness`, `endianness` (`big` or `little`), optional `overflowMode` |
+| `bytes_to_integer` | Decodes a list of 1, 2, 4, or 8 bytes as an integer | `bytes`: byte values from 0 to 255<br>`signedness`: `signed` or `unsigned`<br>`endianness`: `big` or `little` |
+
+For bitwise shifts, the shift count must be less than the width. Arithmetic right shift requires `signedness: "signed"`; logical right shift fills with zero bits.
 
 ### Statistical Operations
 | Function | Description | Parameters |
